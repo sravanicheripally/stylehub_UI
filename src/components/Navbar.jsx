@@ -45,6 +45,7 @@ export default function Navbar({ cartCount = 0, user, role = 'customer', onLogou
             <a href="#about" onClick={() => setOpen(false)}>About</a>
           </> : <>
             <NavLink to="/workspace" onClick={() => setOpen(false)}>Overview</NavLink>
+            {role === 'admin' && <NavLink to="/workspace#account-access" onClick={() => setOpen(false)}>Create users</NavLink>}
             <NavLink to="/products" onClick={() => setOpen(false)}>Catalog preview</NavLink>
             <a href="/workspace#operations" onClick={() => setOpen(false)}>Operations</a>
           </>}

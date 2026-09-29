@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, ClipboardList, ShieldCheck, Store, UsersRound, Plus, RefreshCw } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import './Workspace.css'
 import './WorkspaceData.css'
@@ -12,6 +12,7 @@ export default function Workspace({ role }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' })
+  const [userForm, setUserForm] = useState({ email: '', password: '', full_name: '', phone: '', role: 'seller' })
   const [productForm, setProductForm] = useState({ category_id: '', name: '', description: '', price: '', size: '', color: '', stock_quantity: '0' })
   const [productImages, setProductImages] = useState([])
   const [imageValidationError, setImageValidationError] = useState('')
@@ -19,6 +20,7 @@ export default function Workspace({ role }) {
   const [saving, setSaving] = useState(false)
   const isAdmin = role === 'admin'
   const RoleIcon = role === 'admin' ? ShieldCheck : Store
+  const location = useLocation()
 
   async function loadWorkspace() {
     setLoading(true)
@@ -36,6 +38,12 @@ export default function Workspace({ role }) {
 
   useEffect(() => { loadWorkspace() }, [])
 
+  useEffect(() => {
+    if (isAdmin && location.hash === '#account-access') {
+      document.getElementById('account-access')?.scrollIntoView({ block: 'start' })
+    }
+  }, [isAdmin, location.hash])
+
   async function createCategory(event) {
     event.preventDefault()
     setSaving(true)
@@ -48,6 +56,30 @@ export default function Workspace({ role }) {
       await loadWorkspace()
     } catch (err) { setError(err.status === 403 ? 'The backend denied category creation. Confirm this account has the admin role in /auth/me, then sign in again after an administrator updates the role.' : err.message || 'Could not create category.') }
     finally { setSaving(false) }
+  }
+
+  async function createUser(event) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      const createdUser = await api.createAdminUser({
+        email: userForm.email.trim(),
+        password: userForm.password,
+        full_name: userForm.full_name.trim(),
+        phone: userForm.phone.trim() || null,
+        role: userForm.role
+      })
+      setUserForm({ email: '', password: '', full_name: '', phone: '', role: 'seller' })
+      setNotice(`Created ${createdUser.role} account for ${createdUser.email}.`)
+    } catch (err) {
+      setError(err.status === 403
+        ? 'The backend denied user creation. This action requires an admin account; confirm /auth/me returns role "admin" and sign in again.'
+        : err.status === 404
+          ? 'The deployed backend does not have the /api/v1/admin/users route yet. Deploy that backend endpoint before creating accounts here.'
+        : err.message || 'Could not create user.')
+    } finally { setSaving(false) }
   }
 
   async function createProduct(event) {
@@ -152,10 +184,23 @@ export default function Workspace({ role }) {
               <button className="primary-btn dark" disabled={saving || loading}><Plus size={16}/>{saving ? 'Saving…' : 'Add product'}</button>
             </form>}
           </section>}
+          {isAdmin && <section className="workspace-form-panel">
+            <span id="account-access" className="workspace-anchor" />
+            <p className="eyebrow">ACCOUNT ACCESS</p><h2>Create a user</h2>
+            <p className="muted">Create customer, seller, or admin accounts with the role assigned by the backend.</p>
+            <form className="workspace-form" onSubmit={createUser}>
+              <label>Full name<input value={userForm.full_name} onChange={event => setUserForm({ ...userForm, full_name: event.target.value })} minLength="2" maxLength="150" required autoComplete="name"/></label>
+              <label>Email<input type="email" value={userForm.email} onChange={event => setUserForm({ ...userForm, email: event.target.value })} required autoComplete="email"/></label>
+              <label>Temporary password<input type="password" value={userForm.password} onChange={event => setUserForm({ ...userForm, password: event.target.value })} minLength="8" maxLength="128" required autoComplete="new-password"/></label>
+              <label>Phone<input type="tel" value={userForm.phone} onChange={event => setUserForm({ ...userForm, phone: event.target.value })} maxLength="20" autoComplete="tel"/></label>
+              <label>Role<select value={userForm.role} onChange={event => setUserForm({ ...userForm, role: event.target.value })}><option value="customer">Customer</option><option value="seller">Seller</option><option value="admin">Admin</option></select></label>
+              <button className="primary-btn dark" disabled={saving}><Plus size={16}/>{saving ? 'Creating…' : 'Create account'}</button>
+            </form>
+          </section>}
           <section className="workspace-form-panel workspace-limitations">
             <p className="eyebrow">OPERATIONS API</p><h2>{isAdmin ? 'Admin controls' : 'Seller orders'}</h2>
             {isAdmin ? <>
-              <div className="workspace-limitation"><UsersRound size={19}/><div><strong>User and seller management</strong><p>The backend does not currently expose list, update, or suspend-user endpoints.</p></div></div>
+              <div className="workspace-limitation"><UsersRound size={19}/><div><strong>User and seller management</strong><p>Create customer, seller, and admin accounts above. Listing, editing, and suspension still need API endpoints.</p></div></div>
               <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order reports</strong><p>No order endpoint is available for monthly or date-range order counts.</p></div></div>
             </> : <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order status and fulfillment</strong><p>The backend currently has no seller orders endpoint or order status operations.</p></div></div>}
           </section>

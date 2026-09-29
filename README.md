@@ -11,6 +11,14 @@ npm run dev
 
 Open the URL shown by Vite, usually http://localhost:5173. In PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`.
 
+## Deploy to Render
+
+This repository includes a `render.yaml` Blueprint for a Render Static Site. In Render, choose **New + > Blueprint** and select this GitHub repository. The blueprint runs `npm ci && npm run build`, publishes `dist`, sets `VITE_API_BASE_URL`, and rewrites app routes to `index.html` so React Router links load directly.
+
+After the first deploy, add the deployed frontend origin (for example, `https://stylehub-frontend.onrender.com`) to the backend's CORS allowed origins. Use the exact Render URL shown for the frontend, and add any custom domain separately. The backend must allow that HTTPS origin for credentialed requests. The frontend environment variable is embedded at build time, so trigger a new deploy after changing it.
+
+The backend URL must include the API prefix: `https://stylehub-backend-gu04.onrender.com/api/v1`.
+
 ## Backend integration
 
 The frontend is configured for:
@@ -29,6 +37,7 @@ Available backend endpoints used by the frontend:
 - POST /auth/register
 - POST /auth/login
 - GET /auth/me
+- POST /admin/users (admin user creation; available after the backend route is deployed)
 - GET /categories
 - POST /categories (admin)
 - GET /products
@@ -38,7 +47,9 @@ Available backend endpoints used by the frontend:
 - PUT /products/{id}
 - DELETE /products/{id}
 
-`GET /auth/me` must return a `role` field (`customer`, `seller`, or `admin`) for role-specific landing pages. The admin workspace can add categories and review live catalog counts. The seller workspace can create products with a category, price, and optional size/color/stock variant.
+`GET /auth/me` must return a `role` field (`customer`, `seller`, or `admin`) for role-specific landing pages. The admin workspace can add categories, create customer/seller/admin accounts through `POST /admin/users`, and review live catalog counts. The seller workspace can create products with a category, price, and optional size/color/stock variant.
+
+The first admin must be bootstrapped outside the admin-only user-creation screen: provision one trusted admin through a one-time backend seed/CLI command or a protected first-admin bootstrap process, then sign in and create additional accounts from the workspace. Do not make ordinary user registration accept an admin role or leave an unauthenticated admin-creation endpoint enabled. The deployed Render API must be updated to include `/api/v1/admin/users`; it is not present in the current hosted OpenAPI route list yet.
 
 The image upload route stores files under `/media/product-images/`; the FastAPI application must mount that directory at `/media` so returned image URLs are served. The backend does not expose order listing/status/reporting, customer or seller management, seller-owned product lists, or category update/delete endpoints. Those workflows require backend APIs before they can be implemented accurately. Suggested additions include an admin statistics endpoint with date filters, admin user/role management endpoints, seller-scoped product and order endpoints, and order status update operations.
 

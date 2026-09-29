@@ -27,6 +27,7 @@ export const api = {
   login: (body) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   register: (body) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   me: () => request('/auth/me'),
+  createAdminUser: (body) => request('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
   products: ({ search='', page=1, page_size=100 } = {}) => {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
