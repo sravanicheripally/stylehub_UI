@@ -1,4 +1,4 @@
-const API_BASE = 'https://stylehub-backend-gu04.onrender.com/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://stylehub-backend-gu04.onrender.com/api/v1'
 async function request(path, options = {}) {
   const token = localStorage.getItem('stylehub_token')
   const isFormData = options.body instanceof FormData
