@@ -31,13 +31,14 @@ export default function App() {
 
   function addToCart(product){
     setCart(prev=>{
-      const index=prev.findIndex(x=>x.id===product.id && x.selectedSize===product.selectedSize)
+      const index=prev.findIndex(x=>x.id===product.id && x.variant_id===product.variant_id)
       if(index>-1){const next=[...prev];next[index]={...next[index],quantity:(next[index].quantity||1)+(product.quantity||1)};return next}
       return [...prev,{...product,quantity:product.quantity||1}]
     })
   }
   function updateCart(index,quantity){setCart(prev=>prev.map((x,i)=>i===index?{...x,quantity}:x))}
   function removeCart(index){setCart(prev=>prev.filter((_,i)=>i!==index))}
+  function clearCart(){setCart([])}
   function logout(){localStorage.removeItem('stylehub_token');setUser(null)}
   const role = getUserRole(user)
 
@@ -50,7 +51,7 @@ export default function App() {
       <Route path="/products/:id" element={<ProductDetails onAdd={addToCart}/>}/>
       <Route path="/login" element={<Login onLogin={setUser}/>}/>
       <Route path="/register" element={<Register onLogin={setUser}/>}/>
-      <Route path="/cart" element={<Cart items={cart} onUpdate={updateCart} onRemove={removeCart}/>}/>
+      <Route path="/cart" element={<Cart items={cart} onUpdate={updateCart} onRemove={removeCart} onClear={clearCart} user={user}/>}/>
     </Routes>
     {role === 'customer' && <Footer/>}
   </>

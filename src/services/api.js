@@ -27,6 +27,8 @@ export const api = {
   register: (body) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   me: () => request('/auth/me'),
   createAdminUser: (body) => request('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
+  createCheckoutOrder: (items) => request('/orders/checkout', { method: 'POST', body: JSON.stringify({ items }) }),
+  verifyCheckoutPayment: (body) => request('/orders/verify-payment', { method: 'POST', body: JSON.stringify(body) }),
   products: ({ search='', page=1, page_size=100 } = {}) => {
     const params = new URLSearchParams()
     if (search) params.set('search', search)

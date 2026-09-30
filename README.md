@@ -19,6 +19,10 @@ After the first deploy, add the deployed frontend origin (for example, `https://
 
 The backend URL must include the API prefix: `https://stylehub-backend-gu04.onrender.com/api/v1`.
 
+## Razorpay checkout
+
+Customer checkout requires a signed-in customer and the StyleHub backend payment proxy. The frontend opens Razorpay Checkout with the public key ID returned by the backend; Razorpay secrets and the payment service API key must remain server-side. See the backend `PAYMENT_SETUP.md` for required Render environment variables and database migration steps. Payments display as verified after signature validation; capture confirmation still requires payment-service webhook synchronization.
+
 ## Backend integration
 
 The frontend is configured for:
@@ -37,6 +41,8 @@ Available backend endpoints used by the frontend:
 - POST /auth/register
 - POST /auth/login
 - GET /auth/me
+- POST /orders/checkout (customer; server-priced order)
+- POST /orders/verify-payment (customer; payment signature verification)
 - POST /admin/users (admin user creation; available after the backend route is deployed)
 - GET /categories
 - POST /categories (admin)
