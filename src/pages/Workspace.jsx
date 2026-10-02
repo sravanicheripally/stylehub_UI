@@ -8,8 +8,12 @@ import './WorkspaceData.css'
 export default function Workspace({ role }) {
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [orders, setOrders] = useState([])
+  const [orderSummary, setOrderSummary] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [ordersLoading, setOrdersLoading] = useState(true)
   const [error, setError] = useState('')
+  const [ordersError, setOrdersError] = useState('')
   const [notice, setNotice] = useState('')
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' })
   const [userForm, setUserForm] = useState({ email: '', password: '', full_name: '', phone: '', role: 'seller' })
@@ -34,6 +38,20 @@ export default function Workspace({ role }) {
     } catch {
       setError('Workspace data could not be loaded from the StyleHub API.')
     } finally { setLoading(false) }
+
+    setOrdersLoading(true)
+    setOrdersError('')
+    try {
+      const [summaryData, orderData] = await Promise.all([
+        api.orderSummary(),
+        api.orders({ page: 1, page_size: 100 })
+      ])
+      if (!summaryData || !Array.isArray(orderData)) throw new Error('Invalid order API response')
+      setOrderSummary(summaryData)
+      setOrders(orderData)
+    } catch (err) {
+      setOrdersError(err.message || 'Order data could not be loaded from the StyleHub API.')
+    } finally { setOrdersLoading(false) }
   }
 
   useEffect(() => { loadWorkspace() }, [])
@@ -151,15 +169,32 @@ export default function Workspace({ role }) {
       <section className="workspace-operations" id="operations">
         <div className="workspace-section-heading">
           <div><p className="eyebrow">LIVE API DATA</p><h2>{isAdmin ? 'Platform overview' : 'Seller catalog'}</h2></div>
-          <button className="workspace-refresh" onClick={loadWorkspace} disabled={loading}><RefreshCw size={15}/>{loading ? 'Refreshing' : 'Refresh'}</button>
+          <button className="workspace-refresh" onClick={loadWorkspace} disabled={loading || ordersLoading}><RefreshCw size={15}/>{loading || ordersLoading ? 'Refreshing' : 'Refresh'}</button>
         </div>
         {error && <div className="error catalog-error" role="alert">{error}</div>}
         {notice && <div className="workspace-notice" role="status">{notice}</div>}
         <div className="workspace-metrics">
           <div><span>{isAdmin ? 'Products in catalog' : 'Products in storefront'}</span><strong>{loading ? '—' : products.length}</strong></div>
           <div><span>Categories</span><strong>{loading ? '—' : categories.length}</strong></div>
+          <div><span>Orders</span><strong>{ordersLoading ? '—' : ordersError ? '!' : orderSummary?.total_orders ?? 0}</strong></div>
+          <div><span>{isAdmin ? 'Order value' : 'Your order value'}</span><strong>{ordersLoading ? '—' : ordersError ? '!' : `₹${Number(orderSummary?.total_amount || 0).toLocaleString('en-IN')}`}</strong></div>
           <Link to="/products" className="workspace-metric-link">View storefront catalog <ArrowRight size={16}/></Link>
         </div>
+
+        <section className="workspace-orders">
+          <div className="workspace-section-heading">
+            <div><p className="eyebrow">ORDER ACTIVITY</p><h2>{isAdmin ? 'Recent platform orders' : 'Recent orders for your products'}</h2></div>
+          </div>
+          {ordersError && <div className="error catalog-error" role="alert">{ordersError}</div>}
+          {ordersLoading ? <div className="loading">Loading orders…</div> : orders.length === 0 ? <div className="workspace-orders-empty">No orders to show yet.</div> : <div className="workspace-orders-list">
+            {orders.map(order => <article className="workspace-order" key={order.id}>
+              <div><strong>Order #{order.id}</strong><span>{new Date(order.created_at).toLocaleDateString()} · {order.items.length} item{order.items.length === 1 ? '' : 's'}</span></div>
+              <div className="workspace-order-items">{order.items.map((item, index) => <span key={`${order.id}-${item.product_id}-${index}`}>{item.product_name} × {item.quantity}</span>)}</div>
+              <span className={`order-status order-status-${order.status}`}>{order.status}</span>
+              <strong>₹{Number(order.total_amount).toLocaleString('en-IN')}</strong>
+            </article>)}
+          </div>}
+        </section>
 
         <div className="workspace-management-grid">
           {isAdmin ? <section className="workspace-form-panel">
@@ -201,8 +236,8 @@ export default function Workspace({ role }) {
             <p className="eyebrow">OPERATIONS API</p><h2>{isAdmin ? 'Admin controls' : 'Seller orders'}</h2>
             {isAdmin ? <>
               <div className="workspace-limitation"><UsersRound size={19}/><div><strong>User and seller management</strong><p>Create customer, seller, and admin accounts above. Listing, editing, and suspension still need API endpoints.</p></div></div>
-              <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order reports</strong><p>No order endpoint is available for monthly or date-range order counts.</p></div></div>
-            </> : <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order status and fulfillment</strong><p>The backend currently has no seller orders endpoint or order status operations.</p></div></div>}
+              <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order reports</strong><p>Counts and order value above cover all recorded orders. Date-range reports are not available yet.</p></div></div>
+            </> : <div className="workspace-limitation"><ClipboardList size={19}/><div><strong>Order fulfillment</strong><p>Your orders and item totals are shown above. Status updates are not available in this workspace yet.</p></div></div>}
           </section>
         </div>
         <p className="workspace-access-note">Management requests are authorized by the backend using your <strong>{role}</strong> account.</p>

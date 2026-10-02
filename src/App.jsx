@@ -8,6 +8,7 @@ import ProductDetails from './pages/ProductDetails'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Cart from './pages/Cart'
+import Orders from './pages/Orders'
 import Workspace from './pages/Workspace'
 import { api } from './services/api'
 
@@ -20,11 +21,13 @@ function getUserRole(user) {
 
 export default function App() {
   const [user,setUser]=useState(null)
+  const [authLoading,setAuthLoading]=useState(true)
   const [cart,setCart]=useState(()=>JSON.parse(localStorage.getItem('stylehub_cart')||'[]'))
 
   useEffect(()=>{
     const token=localStorage.getItem('stylehub_token')
-    if(token) api.me().then(setUser).catch(()=>{localStorage.removeItem('stylehub_token')})
+    if(token) api.me().then(setUser).catch(()=>{localStorage.removeItem('stylehub_token')}).finally(()=>setAuthLoading(false))
+    else setAuthLoading(false)
   },[])
 
   useEffect(()=>localStorage.setItem('stylehub_cart',JSON.stringify(cart)),[cart])
@@ -52,6 +55,7 @@ export default function App() {
       <Route path="/login" element={<Login onLogin={setUser}/>}/>
       <Route path="/register" element={<Register onLogin={setUser}/>}/>
       <Route path="/cart" element={<Cart items={cart} onUpdate={updateCart} onRemove={removeCart} onClear={clearCart} user={user}/>}/>
+      <Route path="/orders" element={<Orders user={user} authLoading={authLoading}/>}/>
     </Routes>
     {role === 'customer' && <Footer/>}
   </>

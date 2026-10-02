@@ -1,6 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://stylehub-backend-gu04.onrender.com/api/v1'
-async function request(path, options = {}) {
-  const token = localStorage.getItem('stylehub_token')
+const PAYMENT_API_BASE = import.meta.env.VITE_PAYMENT_API_BASE_URL || API_BASE
+async function request(path, options = {}, base = API_BASE, includeAuth = true) {
+  const token = includeAuth ? localStorage.getItem('stylehub_token') : null
   const isFormData = options.body instanceof FormData
   const headers = {
     ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
@@ -8,7 +9,7 @@ async function request(path, options = {}) {
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  const response = await fetch(`${base}${path}`, { ...options, headers })
   if (!response.ok) {
     let detail = 'Something went wrong'
     try {
@@ -27,8 +28,24 @@ export const api = {
   register: (body) => request('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   me: () => request('/auth/me'),
   createAdminUser: (body) => request('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
-  createCheckoutOrder: (items) => request('/orders/checkout', { method: 'POST', body: JSON.stringify({ items }) }),
-  verifyCheckoutPayment: (body) => request('/orders/verify-payment', { method: 'POST', body: JSON.stringify(body) }),
+  createOrder: (body) => request('/orders', { method: 'POST', body: JSON.stringify(body) }),
+  myOrders: ({ page=1, page_size=20 } = {}) => {
+    const params = new URLSearchParams({ page, page_size })
+    return request(`/orders/history?${params.toString()}`)
+  },
+  orders: ({ page=1, page_size=100 } = {}) => {
+    const params = new URLSearchParams({ page, page_size })
+    return request(`/orders?${params.toString()}`)
+  },
+  orderSummary: () => request('/orders/summary'),
+  createPaymentOrder: (amount, currency = 'INR') => request('/payments/order', {
+    method: 'POST',
+    body: JSON.stringify({ amount, currency })
+  }, PAYMENT_API_BASE, false),
+  verifyPayment: (body) => request('/payments/verify', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }, PAYMENT_API_BASE, false),
   products: ({ search='', page=1, page_size=100 } = {}) => {
     const params = new URLSearchParams()
     if (search) params.set('search', search)

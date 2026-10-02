@@ -41,6 +41,7 @@ export default function Navbar({ cartCount = 0, user, role = 'customer', onLogou
           {role === 'customer' ? <>
             <NavLink to="/" onClick={() => setOpen(false)}>Home</NavLink>
             <NavLink to="/products" onClick={() => setOpen(false)}>Shop</NavLink>
+            {user && <NavLink to="/orders" onClick={() => setOpen(false)}>My orders</NavLink>}
             <a href="#categories" onClick={() => setOpen(false)}>Collections</a>
             <a href="#about" onClick={() => setOpen(false)}>About</a>
           </> : <>

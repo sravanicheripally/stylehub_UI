@@ -21,19 +21,23 @@ The backend URL must include the API prefix: `https://stylehub-backend-gu04.onre
 
 ## Razorpay checkout
 
-Customer checkout requires a signed-in customer and the StyleHub backend payment proxy. The frontend opens Razorpay Checkout with the public key ID returned by the backend; Razorpay secrets and the payment service API key must remain server-side. See the backend `PAYMENT_SETUP.md` for required Render environment variables and database migration steps. Payments display as verified after signature validation; capture confirmation still requires payment-service webhook synchronization.
+Customer checkout requires a signed-in customer. General API requests use port 8000; Razorpay order creation and signature verification use the payment service on port 8080 (`/payments/order` and `/payments/verify`). Set `VITE_RAZORPAY_KEY_ID` to the Razorpay public key ID. Keep the Razorpay key secret and webhook secret on the payment service only. Payments display as verified after signature validation; capture confirmation still requires payment-service webhook synchronization.
 
 ## Backend integration
 
-The frontend is configured for:
-
-`http://127.0.0.1:8000/api/v1`
-
-Copy `.env.example` to `.env` if you need a different API URL:
+For local development, general API requests use port 8000 and checkout order/payment verification use port 8080 through the Vite `/payment-api` proxy. This avoids browser CORS preflight failures during local checkout:
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+VITE_PAYMENT_API_BASE_URL=/payment-api
+VITE_RAZORPAY_KEY_ID=rzp_test_your_key_id
 ```
+
+Copy `.env.example` to `.env` and adjust either URL if needed:
+
+`VITE_API_BASE_URL` is also used for product images.
+
+The Vite proxy is development-only. In production, configure the payment API to allow the deployed frontend origin through CORS and set `VITE_PAYMENT_API_BASE_URL` to its API origin.
 
 Categories, products, product details, prices, active state, inventory variants, and uploaded product images are read from the FastAPI backend. The storefront does not substitute hardcoded demo records when the API is unavailable; it shows an error or empty state instead. Products without an uploaded image use a neutral placeholder.
 
@@ -41,8 +45,12 @@ Available backend endpoints used by the frontend:
 - POST /auth/register
 - POST /auth/login
 - GET /auth/me
-- POST /orders/checkout (customer; server-priced order)
-- POST /orders/verify-payment (customer; payment signature verification)
+- POST /orders (customer; call after payment verification)
+- GET /orders/history (customer order history)
+- GET /orders (admin; all orders, or seller; only that seller's items)
+- GET /orders/summary (admin-wide or seller-scoped order counts and value)
+- POST http://127.0.0.1:8080/payments/order (create a Razorpay order)
+- POST http://127.0.0.1:8080/payments/verify (verify the payment signature)
 - POST /admin/users (admin user creation; available after the backend route is deployed)
 - GET /categories
 - POST /categories (admin)
@@ -57,7 +65,7 @@ Available backend endpoints used by the frontend:
 
 The first admin must be bootstrapped outside the admin-only user-creation screen: provision one trusted admin through a one-time backend seed/CLI command or a protected first-admin bootstrap process, then sign in and create additional accounts from the workspace. Do not make ordinary user registration accept an admin role or leave an unauthenticated admin-creation endpoint enabled. The deployed Render API must be updated to include `/api/v1/admin/users`; it is not present in the current hosted OpenAPI route list yet.
 
-The image upload route stores files under `/media/product-images/`; the FastAPI application must mount that directory at `/media` so returned image URLs are served. The backend does not expose order listing/status/reporting, customer or seller management, seller-owned product lists, or category update/delete endpoints. Those workflows require backend APIs before they can be implemented accurately. Suggested additions include an admin statistics endpoint with date filters, admin user/role management endpoints, seller-scoped product and order endpoints, and order status update operations.
+The image upload route stores files under `/media/product-images/`; the FastAPI application must mount that directory at `/media` so returned image URLs are served. Order history and order count/value summaries are available after applying the backend order migration with `alembic upgrade head`. The backend independently verifies the Razorpay signature through its configured payment service before recording an order. Set `PAYMENT_SERVICE_URL` on the backend to the payment service base URL (it defaults to `http://127.0.0.1:8080` for local development). The admin workspace shows platform-wide orders and totals; the seller workspace is restricted to orders containing that seller's products. Order status changes, date-range reports, customer or seller management, seller-owned product lists, and category update/delete endpoints are not available yet.
 
 ## Included screens
 
